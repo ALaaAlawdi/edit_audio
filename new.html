@@ -158,9 +158,13 @@
     function parseTimestamps(text) {
         const lines = text.split('\n');
         timestamps = lines.map(line => {
-            const [start, end] = line.match(/(\d+)/g).map(Number);
-            return { start, end };
-        });
+            const match = line.match(/(\d+)/g);
+            if (match) {
+                const [start, end] = match.map(Number);
+                return { start, end };
+            }
+            return { start: 0, end: 1000 };
+        }).filter(segment => segment.start !== segment.end);
     }
 
     function displaySegments() {
@@ -230,7 +234,7 @@
     async function downloadSegment(index) {
         const startInput = document.getElementById(`start-${index}`);
         const endInput = document.getElementById(`end-${index}`);
-        const startTime =parseInt(startInput.value, 10) / 1000;
+        const startTime = parseInt(startInput.value, 10) / 1000;
         const endTime = parseInt(endInput.value, 10) / 1000;
 
         const segmentBuffer = audioBuffer.slice(
