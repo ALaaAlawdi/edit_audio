@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Audio Segment Player</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 600px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            display: block;
+            margin: 10px auto;
+        }
+        .segment {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .segment p {
+            margin: 5px 0;
+        }
+        .timestamp-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .timestamp-controls button {
+            padding: 5px;
+            font-size: 14px;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .timestamp-controls button:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .timestamp-controls input {
+            width: 70px;
+            text-align: center;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .segment-buttons {
+            margin-top: 10px;
+        }
+        .segment-buttons button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: 1px solid #28a745;
+            background-color: #28a745;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .segment-buttons button:hover {
+            background-color: #218838;
+            border-color: #218838;
+        }
+        .segment-buttons button:nth-child(2) {
+            border: 1px solid #17a2b8;
+            background-color: #17a2b8;
+        }
+        .segment-buttons button:nth-child(2):hover {
+            background-color: #117a8b;
+            border-color: #117a8b;
+        }
+        .segment-buttons button:nth-child(3) {
+            border: 1px solid #dc3545;
+            background-color: #dc3545;
+        }
+        .segment-buttons button:nth-child(3):hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Professional Audio Segment Player</h1>
+    <input type="file" id="textFileInput" accept=".txt">
+    <input type="file" id="audioFileInput" accept="audio/*">
+    <button id="addSegmentButton" style="margin-top: 20px; padding: 10px 20px; font-size: 16px; border: 1px solid #007bff; background-color: #007bff; color: #fff; border-radius: 5px; cursor: pointer;">Add New Segment</button>
+    <div id="segmentsContainer"></div>
+    <button id="saveSegmentsButton" style="margin-top: 20px; padding: 10px 20px; font-size: 16px; border: 1px solid #ffc107; background-color: #ffc107; color: #333; border-radius: 5px; cursor: pointer;">Save All Segments</button>
+</div>
+
+<script>
+    const textFileInput = document.getElementById('textFileInput');
+    const audioFileInput = document.getElementById('audioFileInput');
+    const segmentsContainer = document.getElementById('segmentsContainer');
+    const saveSegmentsButton = document.getElementById('saveSegmentsButton');
+    const addSegmentButton = document.getElementById('addSegmentButton');
+
+    let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    let audioBuffer;
+    let timestamps = [];
+
+    textFileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const text = await file.text();
+            parseTimestamps(text);
+            if (audioBuffer) {
+                displaySegments();
+            }
+        }
+    });
+
+    audioFileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const arrayBuffer = await file.arrayBuffer();
+            audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            if (timestamps.length > 0) {
+                displaySegments();
+            }
+        }
+    });
+
+    addSegmentButton.addEventListener('click', () => {
+        const newSegment = { start: 0, end: 1000 };
+        timestamps.push(newSegment);
+        displaySegments();
+    });
+
+    function parseTimestamps(text) {
+        const lines = text.split('\n');
+        timestamps = lines.map(line => {
+            const [start, end] = line.match(/(\d+)/g).map(Number);
+            return { start, end };
+        });
+    }
+
+    function displaySegments() {
+        segmentsContainer.innerHTML = '';
+        timestamps.forEach((segment, index) => {
+            const segmentElement = document.createElement('div');
+            segmentElement.className = 'segment';
+            segmentElement.innerHTML = `
+                <p>Segment ${index + 1}</p>
+                <div>
+                    <label>Start: <input type="number" value="${segment.start}" id="start-${index}" class="timestamp-input"> ms</label>
+                    <label>End: <input type="number" value="${segment.end}" id="end-${index}" class="timestamp-input"> ms</label>
+                </div>
+                <div class="timestamp-controls">
+                    <button onclick="changeTime(${index}, -100, 'start')">-100ms Start</button>
+                    <button onclick="changeTime(${index}, 100, 'start')">+100ms Start</button>
+                    <button onclick="changeTime(${index}, -100, 'end')">-100ms End</button>
+                    <button onclick="changeTime(${index}, 100, 'end')">+100ms End</button>
+                </div>
+                <div class="segment-buttons">
+                    <button onclick="playSegment(${index})">Play Segment</button>
+                    <button onclick="downloadSegment(${index})">Download Segment</button>
+                    <button onclick="deleteSegment(${index})">Delete Segment</button>
+                    <button onclick="insertSegment(${index}, 'before')">Insert Before</button>
+                    <button onclick="insertSegment(${index}, 'after')">Insert After</button>
+                </div>
+            `;
+            segmentsContainer.appendChild(segmentElement);
+        });
+    }
+
+    function changeTime(index, amount, type) {
+        const input = document.getElementById(`${type}-${index}`);
+        let value = parseInt(input.value, 10);
+        value += amount;
+        if (value < 0) value = 0;
+        input.value = value;
+    }
+
+    function playSegment(index) {
+        const startInput = document.getElementById(`start-${index}`);
+        const endInput = document.getElementById(`end-${index}`);
+        const startTime = parseInt(startInput.value, 10) / 1000;
+        const endTime = parseInt(endInput.value, 10) / 1000;
+
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        source.start(0, startTime, endTime - startTime);
+    }
+
+    function deleteSegment(index) {
+        timestamps.splice(index, 1);
+        displaySegments();
+    }
+
+    function insertSegment(index, position) {
+        const newSegment = { start: 0, end: 1000 };
+        if (position === 'before') {
+            timestamps.splice(index, 0, newSegment);
+        } else if (position === 'after') {
+            timestamps.splice(index + 1, 0, newSegment);
+        }
+        displaySegments();
+    }
+
+    async function downloadSegment(index) {
+        const startInput = document.getElementById(`start-${index}`);
+        const endInput = document.getElementById(`end-${index}`);
+        const startTime =parseInt(startInput.value, 10) / 1000;
+        const endTime = parseInt(endInput.value, 10) / 1000;
+
+        const segmentBuffer = audioBuffer.slice(
+            Math.floor(startTime * audioBuffer.sampleRate),
+            Math.ceil(endTime * audioBuffer.sampleRate)
+        );
+
+        const offlineContext = new OfflineAudioContext(
+            segmentBuffer.numberOfChannels,
+            segmentBuffer.length,
+            audioBuffer.sampleRate
+        );
+
+        const bufferSource = offlineContext.createBufferSource();
+        bufferSource.buffer = segmentBuffer;
+
+        bufferSource.connect(offlineContext.destination);
+        bufferSource.start();
+
+        const renderedBuffer = await offlineContext.startRendering();
+
+        const wavBlob = bufferToWave(renderedBuffer, 0, renderedBuffer.length);
+        const wavFile = new Blob([wavBlob], { type: 'audio/wav' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(wavFile);
+        a.download = `segment_${index + 1}.wav`;
+        a.click();
+    }
+
+    saveSegmentsButton.addEventListener('click', () => {
+        const editedTimestamps = [];
+        timestamps.forEach((segment, index) => {
+            const startInput = document.getElementById(`start-${index}`);
+            const endInput = document.getElementById(`end-${index}`);
+            const start = parseInt(startInput.value, 10);
+            const end = parseInt(endInput.value, 10);
+            editedTimestamps.push({ start, end });
+        });
+
+        const data = editedTimestamps.map((segment, index) => `Segment ${index + 1}: Start: ${segment.start} ms, End: ${segment.end} ms`).join('\n');
+        const blob = new Blob([data], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'edited_segments.txt';
+        a.click();
+    });
+
+    function bufferToWave(abuffer, offset, len) {
+        let numOfChan = abuffer.numberOfChannels,
+            length = len * numOfChan * 2 + 44,
+            buffer = new ArrayBuffer(length),
+            view = new DataView(buffer),
+            channels = [],
+            i,
+            sample,
+            pos = 0;
+
+        // write WAVE header
+        setUint32(0x46464952); // "RIFF"
+        setUint32(length - 8); // file length - 8
+        setUint32(0x45564157); // "WAVE"
+
+        setUint32(0x20746d66); // "fmt " chunk
+        setUint32(16); // length = 16
+        setUint16(1); // PCM (uncompressed)
+        setUint16(numOfChan);
+        setUint32(abuffer.sampleRate);
+        setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+        setUint16(numOfChan * 2); // block-align
+        setUint16(16); // 16-bit (hardcoded in this demo)
+
+        setUint32(0x61746164); // "data" - chunk
+        setUint32(length - pos - 4); // chunk length
+
+        // write interleaved data
+        for (i = 0; i < abuffer.numberOfChannels; i++)
+            channels.push(abuffer.getChannelData(i));
+
+        while (pos < length) {
+            for (i = 0; i < numOfChan; i++) {
+                sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+                sample = (0.5 + sample * 0.5) * 65535.0; // scale to 16-bit unsigned
+                sample = Math.floor(sample);
+                view.setUint16(pos, sample, true); // "true" -> little-endian
+                pos += 2;
+            }
+            offset++; // next source sample
+        }
+
+        return buffer;
+
+        function setUint16(data) {
+            view.setUint16(pos, data, true);
+            pos += 2;
+        }
+
+        function setUint32(data) {
+            view.setUint32(pos, data, true);
+            pos += 4;
+        }
+    }
+</script>
+
+</body>
+</html>
